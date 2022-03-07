@@ -1,40 +1,13 @@
 #include "../include/macaw/runtime.hpp"
+#include <iostream>
 namespace macaw {
-__always_inline FloatArray operator*(Matrix weight,FloatArray parameters){
-    //res=weight*parameter=matrix*vector
-    FloatArray res;
-    float tmp;
-    for (auto& x: weight) {
-        for (std::size_t i = 0; i < x.size(); i++) {
-            tmp+=(x[i] * parameters[i]);
-        }
-        res.push_back(tmp);
-        tmp=0;
-    }
-    return res;
-}
-__always_inline FloatArray operator-(FloatArray x,FloatArray bias){
-    //y=bias
-    //just subtract each bias from each item of x to get activation
-    FloatArray res;
-    for (std::size_t i = 0; i < x.size(); i++) {
-        res.push_back(x[i]-bias[i]);
-    }
-    return res;
-}
-__always_inline FloatArray ReLu(FloatArray activation){
-    //y=max(0,x)
-    FloatArray res;
-    for (std::size_t i = 0; i < activation.size(); i++) {
-        res.push_back(activation[i]>0?activation[i]:0);
-    }
-    return res;
-}
+
 Runtime::Runtime() {}
 Runtime::Runtime(NeuralNetwork net) {m_network = net;}
 Runtime::Runtime(NeuralNetwork net,FloatArray params) {
     m_parameters=params;
     m_network = net;
+    execute();
 }
 FloatArray Runtime::execute(FloatArray params){
     m_parameters=params;
@@ -45,9 +18,19 @@ FloatArray Runtime::execute(FloatArray params){
 FloatArray Runtime::execute(){
     FloatArray res;
     auto param=m_parameters;
+    float tmp=0;
     for(int i=0;i<m_network.size();i++){
-        //output=ReLu(weight*param+bias)
-        res=ReLu((m_network[i].m_weights*param)-m_network[i].m_biases);
+        //output=ReLu(weight*param-bias)
+        auto label=m_network[i];
+        for (std::size_t i = 0; i < label.m_weights.size(); i++) {
+            auto& x=label.m_weights[i];
+            for (std::size_t i = 0; i < x.size(); i++) {
+                tmp+=(x[i] * param[i]);
+            }
+            tmp-=label.m_biases[i];
+            res.push_back(tmp>0?tmp:0);
+            tmp=0;
+        }
         param=res;
     }
     return res;
